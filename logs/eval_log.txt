@@ -1,0 +1,52 @@
+Avaliacao ponta a ponta do pipeline hibrido (6 classes)
+Comando: python src/train_hybrid.py --eval-only --data dataset_artist_v2 --out-dir models
+Amostras: 300 de validacao (50 por classe), dataset_artist_v2 gerado com seed 42
+Checkpoints: models/cleaner_model.pt, models/classifier_model.pt
+
+  Acuracia de classificacao: 1.000
+
+  Chamfer A_ALVO (px)  -- ajuste geometrico aplicado sobre o alvo ideal (teto de precisao do ajustador)
+    LINHA_RETA  media=0.09  p90=0.06  <=1.5px: 100.0%
+    RETANGULO   media=0.09  p90=0.14  <=1.5px: 100.0%
+    CIRCULO     media=0.12  p90=0.13  <=1.5px: 100.0%
+    CURVA       media=0.26  p90=0.29  <=1.5px: 100.0%
+    TRIANGULO   media=0.05  p90=0.05  <=1.5px: 100.0%
+    POLILINHA   media=0.36  p90=0.79  <=1.5px:  98.0%
+    GERAL       media=0.16  p90=0.29  <=1.5px:  99.7%
+
+  Chamfer B_OTSU (px)  -- binarizacao por Otsu no lugar da U-Net (baseline sem rede)
+    LINHA_RETA  media=0.77  p90=1.61  <=1.5px:  88.0%
+    RETANGULO   media=0.68  p90=1.40  <=1.5px:  92.0%
+    CIRCULO     media=0.57  p90=1.05  <=1.5px:  96.0%
+    CURVA       media=0.84  p90=1.53  <=1.5px:  88.0%
+    TRIANGULO   media=0.61  p90=1.10  <=1.5px:  98.0%
+    POLILINHA   media=2.08  p90=5.66  <=1.5px:  62.0%
+    GERAL       media=0.93  p90=1.62  <=1.5px:  87.3%
+
+  Chamfer C_REDE (px)  -- pipeline completo: U-Net -> classificador -> regularizacao + snapping
+    LINHA_RETA  media=0.71  p90=1.60  <=1.5px:  88.0%
+    RETANGULO   media=0.63  p90=1.32  <=1.5px:  94.0%
+    CIRCULO     media=0.55  p90=1.06  <=1.5px:  98.0%
+    CURVA       media=0.85  p90=1.56  <=1.5px:  86.0%
+    TRIANGULO   media=0.58  p90=1.00  <=1.5px:  96.0%
+    POLILINHA   media=1.17  p90=2.02  <=1.5px:  70.0%
+    GERAL       media=0.75  p90=1.57  <=1.5px:  88.7%
+
+  Matriz de confusao (linhas=real, colunas=IA):
+    LINHA_RETA  [50  0  0  0  0  0]
+    RETANGULO   [ 0 50  0  0  0  0]
+    CIRCULO     [ 0  0 50  0  0  0]
+    CURVA       [ 0  0  0 50  0  0]
+    TRIANGULO   [ 0  0  0  0 50  0]
+    POLILINHA   [ 0  0  0  0  0 50]
+
+Preview (suja | A | B | C | alvo): assets/eval_preview.png
+
+Leitura dos numeros
+- A ALVO mostra o limite do ajustador geometrico: quando a mascara ja e perfeita, o erro e
+  de 0,05 a 0,36 px. Nada do lado da rede influencia essa coluna.
+- B OTSU e o que se consegue sem rede neural. A U-Net melhora o geral de 0,93 para 0,75 px,
+  e o ganho se concentra em POLILINHA (2,08 -> 1,17 px), onde o limiar nao fecha as lacunas
+  deixadas pelo levante de caneta.
+- C REDE e o resultado publicavel. POLILINHA continua sendo o ponto fraco (70% em <=1,5 px)
+  porque o ajustador as vezes cria um vertice extra em tracos com gap.
